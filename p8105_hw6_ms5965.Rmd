@@ -6,6 +6,7 @@ output: github_document
 ```{r setup, include = FALSE}
 library(tidyverse)
 library(ggplot2)
+library(readxl)
 
 knitr::opts_chunk$set(
 	fig.width = 6, 
@@ -93,3 +94,41 @@ models_results_df %>%
   geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper)) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
+
+
+## Problem 2
+
+```{r cleaning df}
+bw_df = 
+  read_csv("data/birthweight.csv", na = c("", "NA", "Unknown")) %>% 
+  janitor::clean_names() %>% 
+  mutate(
+    babysex = as.factor(babysex), 
+    frace = as.factor(frace),
+    mrace = as.factor(mrace),
+    malform = as.factor(malform),
+    parity = as.factor(parity),
+    pnumlbw = as.factor(pnumlbw),
+    pnumsga = as.factor(pnumsga)
+  )
+```
+
+```{r}
+bw_model_1 = lm(bwt ~ gaweeks + smoken, data = bw_df, na.action = na.exclude) 
+```
+
+```{r plots}
+bw_df %>% 
+  modelr::add_residuals(bw_model_1) %>%
+  modelr::add_predictions(bw_model_1) %>% 
+  ggplot(aes(x = gaweeks, y = resid)) + 
+  geom_violin() +
+  labs(
+    x = "Gestational age in weeks",
+    y = "Residuals"
+  )
+```
+
+Baby's birth weight was modeled against gestational age in weeks and mother's smoking habits in a linear regression model. Smoking can act as a confounder given that it can result in preterm births, hence, lower gestational age. It can also impact birth outcomes i.e. birth weight. Residuals were analyzed to identify issues in model fit. 
+
+
