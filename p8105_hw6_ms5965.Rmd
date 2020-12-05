@@ -7,6 +7,9 @@ output: github_document
 library(tidyverse)
 library(ggplot2)
 library(readxl)
+library(modelr)
+library(mgcv)
+
 
 knitr::opts_chunk$set(
 	fig.width = 6, 
@@ -131,4 +134,52 @@ bw_df %>%
 
 Baby's birth weight was modeled against gestational age in weeks and mother's smoking habits in a linear regression model. Smoking can act as a confounder given that it can result in preterm births, hence, lower gestational age. It can also impact birth outcomes i.e. birth weight. Residuals were analyzed to identify issues in model fit. 
 
+
+Models 2 & 3:
+
+```{r}
+bw_model_2 = lm(bwt ~ gaweeks + blength, data = bw_df, na.action = na.exclude) 
+
+bw_model_3 = lm(bwt ~ bhead*babysex*blength, data = bw_df, na.action = na.exclude) 
+```
+
+```{r}
+bw_df %>% 
+  gather_predictions(bw_model_1, bw_model_2, bw_model_3) %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = gaweeks, y = bwt)) + 
+  geom_point() + 
+  geom_line(aes(y = pred), color = "red") + 
+  facet_wrap(~model)
+
+```
+
+```{r}
+set.seed(1)
+
+cv_df = 
+  crossv_mc(bw_df, 100) %>% 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble)) %>% 
+  mutate(
+    bw_model_1 = map(train, ~ lm(bwt ~ gaweeks + smoken, na.action = na.exclude, data = .x)),
+    bw_model_2 = map(train, ~ lm(bwt ~ gaweeks + blength, na.action = na.exclude, data = .x)),
+    bw_model_3 = map(train, ~ lm(bwt ~ bhead*babysex*blength, na.action = na.exclude, data = .x))
+    ) %>%   
+  mutate(
+    rmse_model1 = map2_dbl(bw_model_1, test, ~rmse(model = .x, data = .y)),
+    rmse_model2 = map2_dbl(bw_model_2, test, ~rmse(model = .x, data = .y)),
+    rmse_model3 = map2_dbl(bw_model_3, test, ~rmse(model = .x, data = .y))) %>% 
+    select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+  
+cv_df
+```
 
