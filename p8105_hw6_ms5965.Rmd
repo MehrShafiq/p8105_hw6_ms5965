@@ -230,13 +230,18 @@ bootstrap_results =
   ) %>% 
   select(-p.value, -statistic) %>% 
   unnest(results) %>% 
-  mutate(
-    log_estimate = log(estimate),
-    est_0.25 = quantile(log_estimate, 0.025),
-    est_0.25 = quantile(log_estimate, 0.975)
+  pivot_wider(
+    names_from = term,
+    values_from = estimate
   ) %>% 
-  ggplot(aes(x = log_estimate)) + geom_density()
-
+  rename(b1 = tmin, b0 = `(Intercept)`) %>% 
+  mutate(
+    log_b1_b0 = log(b0 - b1),
+    est_0.25 = quantile(log_b1_b0, 0.025, na.rm = TRUE,),
+    est_0.25 = quantile(log_b1_b0, 0.975, na.rm = TRUE,)
+  ) %>% 
+  ggplot(aes(x = r_squared)) + geom_density()
+  
 ```
 
 The distribution of the estimates in an inverted parabola. 
@@ -258,10 +263,15 @@ bootstrap_results_1 =
   ) %>% 
   select(-p.value, -statistic) %>% 
   unnest(results) %>% 
+  pivot_wider(
+    names_from = term,
+    values_from = estimate
+  ) %>% 
+  rename(b1 = tmin, b0 = `(Intercept)`) %>% 
   mutate(
-    log_estimate = log(estimate),
-    est_0.25 = quantile(log_estimate, 0.025),
-    est_0.25 = quantile(log_estimate, 0.975)
+    log_b1_b0 = log(b0 - b1),
+    est_0.25 = quantile(log_b1_b0, 0.025, na.rm = TRUE,),
+    est_0.25 = quantile(log_b1_b0, 0.975, na.rm = TRUE,)
   ) %>% 
   ggplot(aes(x = r_squared)) + geom_density()
 ```
